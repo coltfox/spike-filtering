@@ -4,20 +4,15 @@ from if_neuron import IF_neuron
 from numpy.typing import ArrayLike
 from nengo.synapses import Lowpass
 
+def filter_spikes(spikes, alpha=0.8):
+    filt = np.zeros_like(spikes)
 
-def lowpass_filter(x: ArrayLike, sample_freq: int = 1000, cutoff_freq: int = 100):
-    # FFT of the signal
-    freq_domain = np.fft.fft(x)
+    filt[0] = spikes[0]
 
-    # Create a low-pass filter
-    freqs = np.fft.fftfreq(len(x), d=1 / sample_freq)
-    low_pass_filter = np.abs(freqs) < cutoff_freq
-
-    # Apply the filter in the frequency domain
-    filtered_freq_domain = freq_domain * low_pass_filter
-
-    # Inverse FFT to get back to the time domain
-    return np.fft.ifft(filtered_freq_domain)
+    for i, spike in enumerate(spikes[1:]):
+        filt[i + 1] = alpha * filt[i] + spike
+    
+    return filt
 
 
 DURATION = 10
@@ -31,34 +26,38 @@ spikes = IF_neuron.spike_input(inp)
 tau = 1e-3
 syn = Lowpass(tau)
 filtered_nengo = syn.filt(spikes)
-filtered = lowpass_filter(spikes)
+filtered = filter_spikes(spikes)
 
-plt.figure()
-plt.xlabel('t')
-plt.ylabel('sin(t)')
-plt.title('Input Signal')
-plt.grid(True)
-plt.plot(timesteps, inp)
+# Create a 2x2 grid of subplots
+fig, axs = plt.subplots(2, 2, figsize=(10, 8))  # Adjust figsize for better spacing
 
-plt.figure()
-plt.xlabel('t')
-plt.ylabel('S')
-plt.title('Spikes')
-plt.grid(True)
-plt.plot(timesteps, spikes)
+# First plot (top-left)
+axs[0, 0].plot(timesteps, inp)
+axs[0, 0].set_title('Input Signal')
+axs[0, 0].set_xlabel('t')
+axs[0, 0].set_ylabel('sin(t)')
+axs[0, 0].grid(True)
 
-plt.figure()
-plt.xlabel('t')
-plt.ylabel('S')
-plt.title('Filtered Spikes')
-plt.grid(True)
-plt.plot(timesteps, filtered)
+# Second plot (top-right)
+axs[0, 1].plot(timesteps, spikes)
+axs[0, 1].set_title('Spikes')
+axs[0, 1].set_xlabel('t')
+axs[0, 1].set_ylabel('S')
+axs[0, 1].grid(True)
 
-plt.figure()
-plt.xlabel('t')
-plt.ylabel('S')
-plt.title('Filtered Spikes Nengo')
-plt.grid(True)
-plt.plot(timesteps, filtered_nengo)
+# Third plot (bottom-left)
+axs[1, 0].plot(timesteps, filtered)
+axs[1, 0].set_title('Filtered Spikes')
+axs[1, 0].set_xlabel('t')
+axs[1, 0].set_ylabel('S')
+axs[1, 0].grid(True)
 
+# Fourth plot (bottom-right)
+axs[1, 1].plot(timesteps, filtered_nengo)
+axs[1, 1].set_title('Filtered Spikes Nengo')
+axs[1, 1].set_xlabel('t')
+axs[1, 1].set_ylabel('S')
+axs[1, 1].grid(True)
+
+plt.tight_layout()
 plt.show()
